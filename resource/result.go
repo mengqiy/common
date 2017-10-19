@@ -20,13 +20,13 @@ import (
 	"fmt"
 	"reflect"
 
+  "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/watch"
-	"k8s.io/kubernetes/pkg/api"
 )
 
 // ErrMatchFunc can be used to filter errors that may not be true failures.
@@ -160,13 +160,22 @@ func (r *Result) Object() (runtime.Object, error) {
 	if len(versions) == 1 {
 		version = versions.List()[0]
 	}
-	return &api.List{
+
+  raw := []runtime.RawExtension{}
+	for _, o := range objects {
+		raw = append(raw, runtime.RawExtension{Object: o})
+  }
+	return &v1.List{
 		ListMeta: metav1.ListMeta{
 			ResourceVersion: version,
 		},
-		Items: objects,
+		Items: raw,
 	}, err
 }
+
+// Compile time check to enforce that list implements the necessary interface
+var _ metav1.ListInterface = &v1.List{}
+var _ metav1.ListMetaAccessor = &v1.List{}
 
 // ResourceMapping returns a single meta.RESTMapping representing the
 // resources located by the builder, or an error if more than one
